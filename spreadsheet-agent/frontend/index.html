@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Spreadsheet Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #090d16 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-input {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen p-6 md:p-10 flex flex-col items-center">
+
+  <div class="w-full max-w-5xl space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+          Spreadsheet Automation Agent
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">Autonomous Gemini 3.6 Flash reasoning with Excel COM and Google Sheets API.</p>
+      </div>
+      <div id="connection-status" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs glass-card border-slate-700 text-emerald-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Connected
+      </div>
+    </div>
+
+    <!-- Command Prompt Card -->
+    <div class="glass-card rounded-2xl p-6 shadow-2xl space-y-4">
+      <label class="block text-sm font-medium text-slate-300">Agent Instruction</label>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input 
+          id="prompt-input" 
+          type="text" 
+          placeholder="e.g., Generate a sales pipeline report with 5 opportunities, style in Excel and upload to Google Sheets." 
+          class="flex-1 glass-input rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-slate-500"
+          value="Create an employee directory with 5 records and export to Excel and Google Sheets."
+        />
+        <button 
+          id="run-btn" 
+          onclick="runAgent()" 
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+        >
+          <i class="fa-solid fa-play text-xs"></i> Run Agent
+        </button>
+      </div>
+    </div>
+
+    <!-- Stepper Progress -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div id="step-reason" class="glass-card p-4 rounded-xl flex items-center gap-3 border-slate-800 transition duration-300">
+        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-semibold text-xs step-icon">1</div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Step 1</p>
+          <p class="text-sm font-medium text-slate-200">Reasoning & Plan</p>
+        </div>
+      </div>
+      <div id="step-data" class="glass-card p-4 rounded-xl flex items-center gap-3 border-slate-800 transition duration-300">
+        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-semibold text-xs step-icon">2</div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Step 2</p>
+          <p class="text-sm font-medium text-slate-200">Generate Data</p>
+        </div>
+      </div>
+      <div id="step-excel" class="glass-card p-4 rounded-xl flex items-center gap-3 border-slate-800 transition duration-300">
+        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-semibold text-xs step-icon">3</div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Step 3</p>
+          <p class="text-sm font-medium text-slate-200">Excel COM Build</p>
+        </div>
+      </div>
+      <div id="step-gsheet" class="glass-card p-4 rounded-xl flex items-center gap-3 border-slate-800 transition duration-300">
+        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-semibold text-xs step-icon">4</div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Step 4</p>
+          <p class="text-sm font-medium text-slate-200">Google Sheets Sync</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid: Logs & Output Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Terminal Logs -->
+      <div class="lg:col-span-2 glass-card rounded-2xl p-5 flex flex-col h-[320px]">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+            <span class="text-xs font-mono text-slate-400 ml-2">agent_runtime.log</span>
+          </div>
+          <button onclick="clearTerminal()" class="text-slate-500 hover:text-slate-300 text-xs">Clear</button>
+        </div>
+        <div id="terminal" class="flex-1 overflow-y-auto font-mono text-xs space-y-2 text-slate-300 pr-2">
+          <p class="text-slate-600">> Autonomous Spreadsheet Agent initialized. Ready for prompt.</p>
+        </div>
+      </div>
+
+      <!-- Action Outputs -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-200">Artifacts & Outputs</h3>
+          <p class="text-xs text-slate-400 mt-1">Generated files and live cloud links.</p>
+        </div>
+
+        <div class="space-y-3">
+          <button id="open-excel-btn" onclick="openExcelLocally()" disabled class="w-full py-3 px-4 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-400 font-medium text-sm flex items-center justify-between disabled:opacity-40 transition">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-file-excel text-emerald-400 text-base"></i>
+              <span>Open Excel Locally</span>
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+          </button>
+
+          <a id="open-gsheet-btn" href="#" target="_blank" class="w-full py-3 px-4 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-400 font-medium text-sm flex items-center justify-between opacity-40 pointer-events-none transition">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-table text-emerald-400 text-base"></i>
+              <span>Open Google Sheet</span>
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+          </a>
+        </div>
+
+        <div id="summary-box" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 italic">
+          Waiting for execution...
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Data Preview Table -->
+    <div class="glass-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-table-cells text-indigo-400"></i> Dataset Preview
+        </h3>
+        <span id="row-count-badge" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md">0 rows</span>
+      </div>
+      <div class="overflow-x-auto max-h-60 overflow-y-auto">
+        <table id="preview-table" class="w-full text-left text-xs border-collapse">
+          <thead id="preview-thead" class="text-slate-400 border-b border-slate-800 bg-slate-900/40 sticky top-0">
+            <tr><th class="p-3 font-medium">No data generated yet</th></tr>
+          </thead>
+          <tbody id="preview-tbody" class="divide-y divide-slate-800/60 text-slate-300"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
